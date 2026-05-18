@@ -16,6 +16,7 @@
 
 import joblib
 import numpy as np
+import pandas as pd
 import os
 
 # ---- Load trained model and encoders ----
@@ -76,18 +77,18 @@ def predict_edge_risk(node_a, node_b, edge_metadata):
         if risk_model is None:
             return 0.5  # fallback
 
-    features = [
-        le_road.transform([edge_metadata['road_type']])[0],
-        current_conditions['hour_of_day'],
-        current_conditions['day_of_week'],
-        le_weather.transform([current_conditions['weather']])[0],
-        current_conditions['traffic_density'],
-        edge_metadata['speed_limit'],
-        edge_metadata['has_signal'],
-        edge_metadata['num_lanes'],
-    ]
-
-    prediction = risk_model.predict([features])[0]
+    feature_dict = {
+        'road_type':       [le_road.transform([edge_metadata['road_type']])[0]],
+        'hour_of_day':     [current_conditions['hour_of_day']],
+        'day_of_week':     [current_conditions['day_of_week']],
+        'weather':         [le_weather.transform([current_conditions['weather']])[0]],
+        'traffic_density': [current_conditions['traffic_density']],
+        'speed_limit':     [edge_metadata['speed_limit']],
+        'has_signal':      [edge_metadata['has_signal']],
+        'num_lanes':       [edge_metadata['num_lanes']],
+    }
+    df_input = pd.DataFrame(feature_dict)
+    prediction = risk_model.predict(df_input)[0]
     return float(np.clip(prediction, 0.0, 1.0))
 
 
