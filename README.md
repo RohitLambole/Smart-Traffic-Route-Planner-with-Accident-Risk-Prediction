@@ -1,6 +1,6 @@
 # Smart Traffic Route Planner with Accident Risk Prediction
 
-> An intelligent system that predicts road-level accident risk using Machine Learning and uses that prediction inside A* Search to find safe routes, controlled by a goal-based AI Agent.
+> An intelligent system that predicts road-level accident risk using Machine Learning and uses that prediction inside A* Search to find safe routes, controlled by a goal-based AI Agent — now with a full Streamlit Web UI.
 
 ---
 
@@ -12,6 +12,7 @@
 - [How Technologies Connect to This Project](#how-technologies-connect-to-this-project)
 - [Project Structure](#project-structure)
 - [How to Run](#how-to-run)
+- [How to Present This Project to Your Teacher](#how-to-present-this-project-to-your-teacher)
 
 ---
 
@@ -20,9 +21,10 @@
 Traditional GPS systems find the **shortest** route. They ignore whether that route is **safe**.
 
 This project solves that problem by:
-1. **Predicting** the accident risk of every road using a trained Machine Learning model
-2. **Finding** the safest optimal path using the A* Search Algorithm
-3. **Deciding** intelligently whether to proceed or reroute using an AI Agent
+1. **Predicting** the accident risk of every road using a trained Machine Learning model (Gradient Boosting, R²=0.9177)
+2. **Finding** the safest optimal path using the A* Search Algorithm with a risk-aware cost function
+3. **Deciding** intelligently whether to proceed or reroute using an AI Agent with memory
+4. **Visualizing** everything through a professional dark-themed Streamlit Web UI
 
 ---
 
@@ -37,7 +39,7 @@ This project solves that problem by:
 - Instagram's backend is built in Python
 
 **In This Project:**
-- Core language for all modules — data generation, model training, A* algorithm, agent logic, and visualization
+- Core language for all modules — data generation, model training, A* algorithm, agent logic, visualization, and web UI
 
 ---
 
@@ -50,14 +52,13 @@ This project solves that problem by:
 - NASA uses it for astronomical data analysis
 
 **In This Project:**
-- Generates synthetic road risk data
-- Performs element-wise operations to compute accident risk scores
+- Generates synthetic road risk data using `np.random.seed(42)` for reproducibility
 - Clips prediction values to the valid range [0.0, 1.0]
 
 ---
 
 ### 3. Pandas
-**What it is:** A Python library for data manipulation and analysis using DataFrames (like Excel tables in code).
+**What it is:** A Python library for data manipulation and analysis using DataFrames.
 
 **Real-World Use:**
 - Used by banks to analyze transaction datasets
@@ -66,13 +67,13 @@ This project solves that problem by:
 
 **In This Project:**
 - Loads and structures the 800-row road risk dataset
-- Handles feature columns (road_type, weather, hour_of_day, etc.)
+- Passes named DataFrames to the ML model (prevents sklearn feature name warnings)
 - Exports the dataset to CSV for reuse
 
 ---
 
 ### 4. Scikit-learn
-**What it is:** A Python ML library providing ready-to-use implementations of regression, classification, clustering, and preprocessing tools.
+**What it is:** A Python ML library providing ready-to-use implementations of regression, classification, and preprocessing tools.
 
 **Real-World Use:**
 - Netflix uses similar ML pipelines for recommendation engines
@@ -83,7 +84,6 @@ This project solves that problem by:
 - Trains 4 regression models to predict accident risk scores
 - Provides `LabelEncoder` to convert text features (rain, highway) to numbers
 - Evaluates models using MSE, RMSE, and R² metrics
-- `train_test_split` ensures fair model evaluation
 
 ---
 
@@ -103,105 +103,96 @@ This project solves that problem by:
 ---
 
 ### 6. A* Search Algorithm
-**What it is:** A graph-based pathfinding algorithm that finds the optimal path from a source to a destination using a cost function f(n) = g(n) + h(n), where g is actual cost and h is a heuristic estimate.
+**What it is:** A graph-based pathfinding algorithm that finds the optimal path from source to destination using f(n) = g(n) + h(n).
 
 **Real-World Use:**
 - Google Maps uses A* variants for route planning
-- Video game AI (NPCs finding paths in open worlds)
-- Robotics — robot arm path planning in warehouses (Amazon Robotics)
+- Video game AI (NPC pathfinding)
+- Amazon Robotics warehouse path planning
 - Drone delivery path optimization
 
 **In This Project:**
 - Finds the optimal path through a 15-node city road graph
 - Uses Euclidean distance as the admissible heuristic
-- Cost function is modified to include both distance AND predicted accident risk:
-
-```
-weight = 0.6 × distance + 0.4 × (risk_score × 10)
-```
-
-This means safer roads are preferred even if they are slightly longer.
+- Cost function: `weight = 0.6 × distance + 0.4 × (risk × 10)`
 
 ---
 
 ### 7. Goal-Based AI Agent
-**What it is:** An intelligent software agent that has a defined goal, perceives its environment through sensors, and takes actions using actuators to achieve the goal.
+**What it is:** An intelligent software agent with a defined goal, perceiving the environment through sensors and acting through actuators.
 
 **Real-World Use:**
-- Self-driving cars (Tesla Autopilot) — goal: reach destination safely
-- Warehouse robots (Amazon Kiva) — goal: pick and place items optimally
-- Customer service chatbots — goal: resolve user query
-- Smart thermostats (Nest) — goal: maintain comfortable temperature efficiently
+- Self-driving cars (Tesla Autopilot)
+- Warehouse robots (Amazon Kiva)
+- Smart thermostats (Nest)
+- Customer service chatbots
 
 **In This Project:**
-- **Goal:** Reach destination with no road segment having risk > 0.7
-- **Sensors:** ML model predictions, current weather, time, traffic density
-- **Actuators:** Plan route, flag danger, remove risky edges, trigger reroute
-- **Memory:** Stores all past routing decisions within a session
+- **Goal:** Reach destination with all edge risks below 0.7
+- **Sensors:** ML model predictions, weather, time, traffic density
+- **Actuators:** Route selection, edge removal, rerouting
+- **Memory:** Stores all past routing decisions in `self.memory[]`
 
 Agent Decision Flow:
 ```
 Plan Route via A*
       |
-Scan each edge for risk
+Scan each edge for risk > 0.7
       |
-   Risk > 0.7?
-   /         \
- NO           YES
-  |             |
-PROCEED     Remove edge
-             Re-run A*
+   Danger?
+   /      \
+  NO       YES
+  |          |
+PROCEED   Remove edge → Re-run A*
                |
           Found alt?
           /        \
         YES          NO
-      REROUTE     PROCEED WITH
-                   CAUTION
+      REROUTE     PROCEED WITH CAUTION
 ```
 
 ---
 
-### 8. Matplotlib
-**What it is:** A Python library for creating static, animated, and interactive visualizations.
+### 8. Matplotlib + NetworkX
+**What it is:** Libraries for creating visualizations and graph structures.
 
 **Real-World Use:**
-- Scientists use it to plot experimental data
-- Financial analysts use it for stock trend visualization
-- Weather agencies use it for climate data charts
+- Scientists plot experimental data with Matplotlib
+- Telecom companies design network topology with NetworkX
 
 **In This Project:**
 - Draws the 15-node city road graph
-- Colors edges Red (high risk), Orange (medium risk), Green (safe)
-- Highlights the shortest path (blue dashed) vs the agent's chosen safe path (green solid)
-- Saves the route map as `route_map.png`
+- Colors edges: Red (risk > 0.7), Orange (0.4–0.7), Green (< 0.4)
+- Highlights shortest path (blue dashed) vs agent's safe path (green solid)
+- Saves `route_map.png` and 3 analysis graphs
 
 ---
 
-### 9. NetworkX
-**What it is:** A Python library for creating, manipulating, and studying complex networks and graphs.
+### 9. Streamlit
+**What it is:** A Python framework for building interactive web applications with zero frontend code.
 
 **Real-World Use:**
-- Used in social network analysis (finding influential users)
-- Used in biology for protein interaction networks
-- Used in telecommunications for network topology design
+- Data scientists use it to deploy ML models as web apps
+- Used for internal dashboards in companies like Airbnb and Spotify
 
 **In This Project:**
-- Builds the city road graph structure for visualization
-- Provides the graph object that matplotlib draws on
+- Provides the full Web UI for the project (`app.py`)
+- Interactive sidebar for source, destination, weather, time, traffic inputs
+- Displays live route map, edge risk scan, path comparison, and ML graphs
+- Dark-themed professional interface accessible at `http://localhost:8501`
 
 ---
 
 ### 10. Joblib
-**What it is:** A Python library for efficient serialization (saving/loading) of large Python objects, particularly ML models.
+**What it is:** A Python library for saving and loading large Python objects, particularly ML models.
 
 **Real-World Use:**
-- Used in production ML systems to save trained models once and deploy them many times
-- Used in scientific computing to cache expensive computations
+- Used in production ML systems to save trained models once and deploy many times
 
 **In This Project:**
-- Saves the trained Gradient Boosting model to `risk_model.pkl`
-- Saves the LabelEncoders to `le_road.pkl` and `le_weather.pkl`
-- Loads them back at runtime so the model does not need to be retrained on every run
+- Saves trained Gradient Boosting model to `risk_model.pkl`
+- Saves encoders to `le_road.pkl` and `le_weather.pkl`
+- Loads them at runtime — no retraining needed on every run
 
 ---
 
@@ -209,9 +200,9 @@ PROCEED     Remove edge
 
 | Application | Industry | How This Project Relates |
 |-------------|----------|--------------------------|
-| Google Maps / Waze Route Safety | Navigation | Same concept — risk-aware routing |
+| Google Maps / Waze Route Safety | Navigation | Risk-aware routing |
 | Tesla Autopilot Path Planning | Automotive | Agent-based decision with sensor inputs |
-| Amazon Delivery Route Optimization | Logistics | A* for shortest safe delivery path |
+| Amazon Delivery Route Optimization | Logistics | A* for shortest safe path |
 | Smart City Traffic Management | Government | Real-time risk assessment per road |
 | Insurance Premium Calculation | Finance | Road risk scoring per segment |
 | Emergency Vehicle Routing | Healthcare | Fastest AND safest path to hospital |
@@ -226,28 +217,21 @@ PROCEED     Remove edge
 |                  |       |                    |       |                  |
 |  NumPy           | ----> |  Scikit-learn      | ----> |  A* Algorithm    |
 |  Pandas          |       |  Gradient Boosting |       |  AI Agent        |
-|  CSV Dataset     |       |  (R2 = 0.9177)     |       |  Decision Logic  |
-|  (800 samples)   |       |  Predicts risk 0-1 |       |  Rerouting       |
+|  CSV Dataset     |       |  (R² = 0.9177)     |       |  Memory + Reroute|
+|  (800 samples)   |       |  Predicts risk 0-1 |       |                  |
 +------------------+       +-------------------+       +------------------+
                                                                 |
                                                                 v
                                                   +------------------+
                                                   |  OUTPUT LAYER    |
                                                   |                  |
+                                                  |  Streamlit UI    |
                                                   |  Matplotlib      |
                                                   |  NetworkX        |
                                                   |  route_map.png   |
+                                                  |  3 graphs        |
                                                   +------------------+
 ```
-
-Every technology feeds into the next:
-- **Pandas + NumPy** create the training data
-- **Scikit-learn** trains the model on that data
-- **Joblib** saves the trained model
-- **The saved model** predicts risk scores at runtime
-- **A*** uses those risk scores in its cost function
-- **The Agent** uses A* to plan routes and make decisions
-- **Matplotlib + NetworkX** visualize the final result
 
 ---
 
@@ -256,48 +240,73 @@ Every technology feeds into the next:
 ```
 paai_mini/
 |-- data/
-|   |-- generate_data.py      # Creates 800-sample synthetic dataset
-|   |-- road_risk_data.csv    # Generated training data
+|   |-- generate_data.py        # Creates 800-sample synthetic dataset (seed=42)
+|   |-- road_risk_data.csv      # Generated training data (800 rows, 9 columns)
 |-- models/
-|   |-- risk_model.pkl        # Trained Gradient Boosting model
-|   |-- le_road.pkl           # Road type encoder
-|   |-- le_weather.pkl        # Weather encoder
+|   |-- risk_model.pkl          # Trained Gradient Boosting model (saved by model.py)
+|   |-- le_road.pkl             # Road type label encoder
+|   |-- le_weather.pkl          # Weather label encoder
 |-- src/
-|   |-- graph.py              # 15-node city graph with edge metadata
-|   |-- a_star.py             # A* pathfinding algorithm
-|   |-- model.py              # Train and compare 4 regression models
-|   |-- risk_routing.py       # Bridge: ML model -> A* cost function
-|   |-- agent.py              # Goal-based agent with memory
-|   |-- visualize.py          # Route map visualization
-|-- main.py                   # Entry point (interactive + demo modes)
-|-- route_map.png             # Generated route map
-|-- requirements.txt          # Python dependencies
-|-- README.md                 # This file
+|   |-- graph.py                # 15-node city graph with edge metadata
+|   |-- a_star.py               # A* pathfinding with pluggable cost function
+|   |-- model.py                # Train and compare 4 regression models
+|   |-- risk_routing.py         # Bridge: ML model -> A* cost function
+|   |-- agent.py                # Goal-based agent with memory and rerouting
+|   |-- visualize.py            # Route map visualization (saves route_map.png)
+|   |-- generate_graphs.py      # Generates 3 ML analysis graphs
+|-- app.py                      # Streamlit Web UI (run: python -m streamlit run app.py)
+|-- main.py                     # CLI entry point (interactive + demo modes)
+|-- route_map.png               # Generated route visualization
+|-- graph_model_comparison.png  # Bar chart: 4 models vs MSE/RMSE/R²
+|-- graph_risk_distribution.png # Histogram + boxplot of risk by road type
+|-- graph_feature_importance.png# Feature importance from Gradient Boosting
+|-- requirements.txt            # Python dependencies (including streamlit)
+|-- .gitignore                  # Excludes .pkl, __pycache__, venv
+|-- README.md                   # This file
 ```
 
 ---
 
 ## How to Run
 
-Open VS Code terminal in the project folder and run:
+### First Time Setup (Run Once)
 
 ```
-# Step 1: Install dependencies (once)
+# Step 1: Install all dependencies
 pip install -r requirements.txt
 
-# Step 2: Generate training data (once)
+# Step 2: Generate training data
 python data/generate_data.py
 
-# Step 3: Train the ML models (once)
+# Step 3: Train the ML models
 python src/model.py
 
-# Step 4: Run the simulation (interactive)
+# Step 4: Generate result graphs
+python src/generate_graphs.py
+```
+
+### Option A — Streamlit Web UI (Recommended for Demo)
+
+```
+python -m streamlit run app.py
+```
+Open browser at: **http://localhost:8501**
+
+### Option B — Command Line (Interactive)
+
+```
 python main.py
+```
 
-# OR run the auto demo
+### Option C — Command Line (Auto Demo — 3 scenarios)
+
+```
 python main.py --demo
+```
 
-# Step 5: View the route map
+### View Route Map
+
+```
 start route_map.png
 ```
 
@@ -305,99 +314,87 @@ start route_map.png
 
 ## How to Present This Project to Your Teacher
 
-Follow this flow for a 10-12 minute presentation.
+Follow this flow for a 15-20 minute presentation.
 
 ---
 
-### Step 1: Start with the Problem (1 minute)
+### STEP 1 — Start with the Problem (1 min)
 
 Say:
-> "My mini project is called Smart Traffic Route Planner with Accident Risk Prediction. The problem is simple — Google Maps finds the shortest route, but the shortest route is not always the safest. It ignores weather, road type, and time of night. My system fixes that."
-
-No screen needed at this point.
+> "My mini project is a Smart Traffic Route Planner with Accident Risk Prediction. The problem is that Google Maps finds the shortest route — but the shortest route is not always the safest. It ignores weather, road type, and time of night. My system fixes that."
 
 ---
 
-### Step 2: Show the README (30 seconds)
+### STEP 2 — Open the Web UI (30 sec)
 
-Open `README.md` in VS Code.
+Run in terminal:
+```
+python -m streamlit run app.py
+```
+Open browser at `http://localhost:8501`
 
 Say:
-> "This is my project overview. It combines 4 AI practicals — Agents, A* Search, Regression, and Ensemble Learning — into one complete working system. Each technology has a real-world connection."
-
-Point to the Technology Connection Diagram section.
+> "This is the web interface I built using Streamlit. On the left sidebar you can set the source, destination, weather, hour, and traffic."
 
 ---
 
-### Step 3: Show the Project Structure (30 seconds)
+### STEP 3 — Explain the Architecture (2 min)
 
-Point to the folder tree visible in VS Code's left panel.
+Point to the README Technology Connection Diagram and say:
+> "The system has 4 layers. The Data Layer creates 800 road samples. The ML Layer uses Gradient Boosting to predict risk scores between 0 and 1. The AI Layer uses A* to find the best path using those risk scores. The Output Layer shows the result through this web UI and the colored route map."
+
+---
+
+### STEP 4 — Live Demo — Dangerous Scenario (5 min)
+
+In the Web UI sidebar, set:
+```
+Source:      B
+Destination: N
+Hour:        1
+Weather:     Fog
+Traffic:     0.5
+```
+Click **"Find Safe Route"**
+
+While it runs, say:
+> "I chose B to N, foggy weather at 1 AM with moderate traffic — a dangerous scenario. Watch what the agent decides."
+
+Explain the output:
+
+| What appears | What to say |
+|-------------|-------------|
+| Orange/Red REROUTE banner | "The agent detected danger and rerouted." |
+| Edge risk scan: B→E risk=0.933 DANGER | "Highway in fog at 1 AM — 93% accident risk." |
+| Path comparison table | "Normal GPS would take this shorter path. Our system avoids the dangerous highway." |
+| Route Map | "Red roads are dangerous. Green line is the agent's safe route. Blue dashed is what normal GPS would give." |
+| ML Graphs below | "These show why Gradient Boosting was selected — R² jumped from 0.55 to 0.92." |
+
+---
+
+### STEP 5 — Show Model Results (2 min)
+
+Scroll down in the Web UI to the ML Analysis section. Point to the model comparison graph:
+
+> "I trained 4 models. Linear Regression got R²=0.55 because accident risk is non-linear. Gradient Boosting got R²=0.9177 because it captures combinations — like rain plus highway plus midnight together being far more dangerous. The feature importance graph shows which factors matter most — speed limit and weather have the highest impact."
+
+---
+
+### STEP 6 — Show CLI Demo (optional, 2 min)
+
+Open VS Code terminal:
+```
+python main.py --demo
+```
+Say:
+> "This is the command-line version that runs 3 pre-set scenarios automatically — showing all 3 possible agent decisions: PROCEED, REROUTE, and PROCEED WITH CAUTION."
+
+---
+
+### STEP 7 — Close with 3 Key Points (1 min)
 
 Say:
-> "The project is structured professionally. Data is separate, models are saved, all logic is in individual source files. main.py is the single entry point."
-
----
-
-### Step 4: Run the Live Simulation (5-6 minutes)
-
-Open the VS Code terminal and type:
-
-```
-python main.py
-```
-
-When prompted, enter these values and explain each:
-
-```
-Source node:      B
-Destination node: N
-Hour:             1
-Weather:          fog
-Traffic:          0.5
-```
-
-Say while typing:
-> "I am choosing B to N, foggy weather at 1 AM with moderate traffic — a dangerous real-world scenario. Watch what the agent decides."
-
-Explain the output line by line as it appears:
-
-| What appears on screen | What to say |
-|------------------------|-------------|
-| `[SHORTEST] B -> D -> E -> I -> J -> N` | "This is what a normal GPS gives — shortest by distance only." |
-| `[SAFE] B -> E -> I -> J -> N` | "This is my system's initial risk-aware path using A*." |
-| `B -> E: risk=0.933 !! DANGER` | "The ML model predicted 93% accident risk on this highway — extremely dangerous at 1 AM in fog." |
-| `[REROUTE] Attempting reroute` | "The agent detected danger and removed that road from the graph." |
-| `FINAL DECISION: REROUTE` | "It found a safer alternative automatically. This is the agent working." |
-| `[MEMORY] Agent Memory` | "The agent also stores every decision it makes — this is the memory feature from Practical 1." |
-
----
-
-### Step 5: Open the Route Map (1 minute)
-
-Type in terminal:
-
-```
-start route_map.png
-```
-
-Say:
-> "This is the visual output. Red edges are dangerous roads, orange is moderate, green is safe. The bright green line is the route my agent chose — it avoided the red highway. The blue dashed line is what a normal GPS would have taken."
-
----
-
-### Step 6: Mention Model Training Results (1 minute)
-
-Say:
-> "During training, I compared 4 models — Linear Regression, Polynomial, Random Forest, and Gradient Boosting. Gradient Boosting gave R squared = 0.9177, meaning it explains 92% of the variance in accident risk. That is why it was selected automatically as the best model."
-
-If asked, open `src/model.py` and point to the comparison table in the output.
-
----
-
-### Step 7: Close with 3 Key Points (30 seconds)
-
-Say:
-> "To summarize — this project uses Machine Learning to predict road risk, A* to find the optimal path, and an AI Agent to make the final routing decision. It connects Practicals 1, 2, 3, and 5 into one complete working system with a live demo and visual output."
+> "To summarize — this project uses Machine Learning to predict road risk, A* to find the optimal path, and an AI Agent to make the final routing decision. It connects Practicals 1, 2, 3, and 5 into one complete working system with a live web interface, result graphs, and a GitHub repository."
 
 ---
 
@@ -405,13 +402,15 @@ Say:
 
 | Question | Answer |
 |----------|--------|
-| Why A* over Dijkstra? | A* uses a heuristic and explores fewer nodes — faster and smarter |
-| Why Gradient Boosting? | It captures compound interactions like rain + highway + night that Linear Regression cannot |
+| Why A* over Dijkstra? | A* uses a heuristic — explores fewer nodes, faster and smarter |
+| Why Gradient Boosting? | Captures compound interactions like rain+highway+night — Linear Regression cannot |
 | Where is the ML part? | src/model.py — trains and saves the regression model |
 | Where is the AI Agent? | src/agent.py — goal-based with memory |
-| What does alpha/beta do? | Controls the balance between distance and safety in the cost function |
+| What does alpha/beta do? | Controls balance between distance and safety in the cost function |
 | Is the data real? | Synthetic with real-world logical rules — designed to demonstrate the full pipeline |
-| Where is memory stored? | In self.memory list inside the TrafficAgent class, active during the session |
+| Where is memory stored? | In self.memory list inside TrafficAgent, active during the session |
+| What is the Web UI built with? | Streamlit — a Python framework for building ML web apps |
+| Why commit PNG graphs to GitHub? | So teacher can see results without running code — GitHub renders them automatically |
 
 ---
 
