@@ -78,10 +78,10 @@ def predict_edge_risk(node_a, node_b, edge_metadata):
             return 0.5  # fallback
 
     feature_dict = {
-        'road_type':       [le_road.transform([edge_metadata['road_type']])[0]],
+        'road_type_enc':   [le_road.transform([edge_metadata['road_type']])[0]],
         'hour_of_day':     [current_conditions['hour_of_day']],
         'day_of_week':     [current_conditions['day_of_week']],
-        'weather':         [le_weather.transform([current_conditions['weather']])[0]],
+        'weather_enc':     [le_weather.transform([current_conditions['weather']])[0]],
         'traffic_density': [current_conditions['traffic_density']],
         'speed_limit':     [edge_metadata['speed_limit']],
         'has_signal':      [edge_metadata['has_signal']],
