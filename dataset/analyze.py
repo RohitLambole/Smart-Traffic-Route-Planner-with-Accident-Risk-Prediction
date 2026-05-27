@@ -1,0 +1,73 @@
+import pandas as pd
+
+train = pd.read_csv('c:/Users/Asus/Desktop/paai_mini/dataset/train.csv')
+test = pd.read_csv('c:/Users/Asus/Desktop/paai_mini/dataset/test.csv')
+sub = pd.read_csv('c:/Users/Asus/Desktop/paai_mini/dataset/sample_submission.csv')
+
+print("=" * 60)
+print("TRAIN DATASET")
+print("=" * 60)
+print(f"Shape: {train.shape}")
+print(f"\nColumns: {list(train.columns)}")
+print(f"\nData Types:\n{train.dtypes}")
+print(f"\nFirst 5 rows:\n{train.head()}")
+print(f"\nDescribe (numeric):\n{train.describe()}")
+print(f"\nDescribe (all):\n{train.describe(include='all')}")
+
+print("\n" + "=" * 60)
+print("MISSING VALUES (TRAIN)")
+print("=" * 60)
+print(train.isnull().sum())
+print(f"\nMissing % :\n{(train.isnull().sum() / len(train) * 100).round(2)}")
+
+print("\n" + "=" * 60)
+print("UNIQUE VALUES PER COLUMN (TRAIN)")
+print("=" * 60)
+for col in train.columns:
+    u = train[col].nunique()
+    print(f"\n{col}: {u} unique")
+    if u < 20:
+        print(f"  Values: {sorted(train[col].dropna().unique().tolist())}")
+
+print("\n" + "=" * 60)
+print("TEST DATASET")
+print("=" * 60)
+print(f"Shape: {test.shape}")
+print(f"\nColumns: {list(test.columns)}")
+print(f"\nFirst 5 rows:\n{test.head()}")
+
+print("\n" + "=" * 60)
+print("MISSING VALUES (TEST)")
+print("=" * 60)
+print(test.isnull().sum())
+
+print("\n" + "=" * 60)
+print("SAMPLE SUBMISSION")
+print("=" * 60)
+print(sub)
+
+print("\n" + "=" * 60)
+print("DEMAND STATS (TARGET)")
+print("=" * 60)
+print(f"Min:    {train['demand'].min()}")
+print(f"Max:    {train['demand'].max()}")
+print(f"Mean:   {train['demand'].mean():.6f}")
+print(f"Median: {train['demand'].median():.6f}")
+print(f"Std:    {train['demand'].std():.6f}")
+
+print("\n" + "=" * 60)
+print("GEOHASH ANALYSIS")
+print("=" * 60)
+print(f"Train unique geohashes: {train['geohash'].nunique()}")
+print(f"Test unique geohashes:  {test['geohash'].nunique()}")
+train_geo = set(train['geohash'].unique())
+test_geo = set(test['geohash'].unique())
+print(f"Common geohashes:       {len(train_geo & test_geo)}")
+print(f"Test-only geohashes:    {len(test_geo - train_geo)}")
+
+print("\n" + "=" * 60)
+print("DAY & TIMESTAMP ANALYSIS")
+print("=" * 60)
+print(f"Train days: {sorted(train['day'].unique())}")
+print(f"Test days:  {sorted(test['day'].unique())}")
+print(f"Train timestamps: {sorted(train['timestamp'].unique())}")

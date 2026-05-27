@@ -1,0 +1,450 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[a4paper,left=1.5in,right=1in,top=1in,bottom=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{multirow}
+
+\pagestyle{plain}
+\onehalfspacing
+
+\titleformat{\chapter}[display]
+{\normalfont\bfseries\Huge}{Chapter \thechapter}{20pt}{\Huge}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  frame=single,
+  breaklines=true,
+  numbers=left,
+  numberstyle=\tiny,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  backgroundcolor=\color{gray!10}
+}
+
+\begin{document}
+
+%--- TITLE PAGE ---
+\begin{titlepage}
+\begin{center}
+\vspace*{1cm}
+{\Huge \textbf{A Project Report on}}\\[0.7cm]
+{\Huge \textbf{Smart Traffic Route Planner}}\\[0.3cm]
+{\Huge \textbf{with Accident Risk Prediction}}\\[1.5cm]
+\textit{Submitted by,}\\[0.5cm]
+\textbf{Rohit Sambhaji Lambole}\\[1.5cm]
+\textit{Guided by,}\\[0.5cm]
+\textbf{[Guide Name]}\\[1.5cm]
+A Report submitted to \textbf{[College Name]}\\
+in partial fulfillment of the requirements of\\
+\textbf{THIRD YEAR BACHELOR OF TECHNOLOGY}\\
+in \textbf{Computer Engineering}\\
+\vfill
+Department of Computer Engineering\\
+[College Name] \\ (2025--2026)
+\end{center}
+\end{titlepage}
+
+%--- CERTIFICATE ---
+\chapter*{Certificate}
+\addcontentsline{toc}{chapter}{Certificate}
+This is to certify that the project report entitled \textbf{``Smart Traffic Route Planner with Accident Risk Prediction''} submitted by \textbf{Rohit Sambhaji Lambole} is an authentic record of work carried out during Academic Year 2025--2026 under the supervision of \textbf{[Guide Name]}, in partial fulfillment of the requirements for the award of Bachelor of Technology in Computer Engineering.
+
+\vspace{3cm}
+\begin{flushleft}
+\textbf{[Guide Name]}\\Guide \hfill \textbf{[HOD Name]}\\Head of Department
+\end{flushleft}
+\newpage
+
+%--- DECLARATION ---
+\chapter*{Declaration}
+\addcontentsline{toc}{chapter}{Declaration}
+I hereby declare that the project report entitled \textbf{``Smart Traffic Route Planner with Accident Risk Prediction''} submitted in partial fulfillment of the requirements for Bachelor of Technology in Computer Engineering is my original work and has not been submitted elsewhere.
+
+\vspace{2cm}
+\textbf{Rohit Sambhaji Lambole}
+\newpage
+
+%--- ABSTRACT ---
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+Road accidents cause approximately 1.35 million deaths annually worldwide. Existing GPS navigation systems route vehicles based solely on distance or estimated travel time, completely ignoring dynamic safety factors such as weather, time of day, road type, and traffic density.
+
+This project presents a hybrid Artificial Intelligence and Machine Learning system for accident-risk-aware traffic route planning. A \textbf{Gradient Boosting Regression} model is trained on 800 synthetic road segment samples to predict a continuous accident risk score (0.0--1.0) per road edge. The model achieves $R^2 = 0.9177$, outperforming Linear Regression ($R^2 = 0.5508$), Polynomial Regression ($R^2 = 0.7964$), and Random Forest ($R^2 = 0.8478$).
+
+Predicted risk scores are integrated into the \textbf{A* Search Algorithm} via a parameterized cost function:
+\[w(u,v) = 0.6 \times d(u,v) + 0.4 \times (r(u,v) \times 10)\]
+
+A \textbf{goal-based intelligent agent} with memory monitors the planned route and dynamically reroutes when any road segment risk exceeds the defined threshold of 0.7. A Streamlit web interface provides interactive route planning, live risk visualization, and ML analysis graphs.
+
+\textbf{Keywords:} A* Search, Gradient Boosting, Accident Risk Prediction, Intelligent Agent, Route Planning, Streamlit.
+\newpage
+
+%--- ACKNOWLEDGEMENT ---
+\chapter*{Acknowledgement}
+\addcontentsline{toc}{chapter}{Acknowledgement}
+I sincerely thank my guide \textbf{[Guide Name]} for consistent guidance and support throughout this project. I thank the Department of Computer Engineering for providing the necessary facilities. I am grateful to my family and friends for their encouragement.
+\newpage
+
+%--- TOC ---
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+\listoftables
+\newpage
+\pagenumbering{arabic}
+
+%===========================================
+\chapter{Introduction}
+%===========================================
+
+\section{Background}
+Road accidents are one of the leading causes of preventable deaths globally. The World Health Organization reports approximately \textbf{1.35 million fatalities} per year from road accidents, with millions more injured. In India alone, over 1.5 lakh people die in road accidents annually -- one death every 4 minutes.
+
+Modern navigation systems such as Google Maps and Apple Maps optimize routes based only on \textbf{distance} or \textbf{estimated travel time}. They do not consider:
+\begin{itemize}
+  \item Weather conditions (rain, fog)
+  \item Time of day (late-night driving risk)
+  \item Road type (highway vs. residential lane)
+  \item Traffic density levels
+  \item Presence of traffic signals and number of lanes
+\end{itemize}
+
+These factors significantly influence the probability of a road accident. A highway at 1:00 AM in foggy conditions can carry a predicted accident risk of 0.93 -- yet a standard GPS will still recommend it as the fastest route.
+
+\section{Motivation}
+\begin{itemize}
+  \item \textbf{Personal:} Students and commuters regularly travel through roads of varying safety under dangerous conditions.
+  \item \textbf{Academic:} This project integrates four AI/ML practicals into one complete working system: Intelligent Agents (P1), A* Search (P2), Regression (P3), and Ensemble Learning (P5).
+  \item \textbf{Industry:} Real products like Waze, Tesla Autopilot, and Amazon delivery routing solve variations of this problem. Building it from scratch provides deep understanding of these systems.
+\end{itemize}
+
+\section{Problem Statement}
+Traditional navigation systems optimize routes based only on distance or time. They fail to incorporate dynamic safety factors such as weather, time of day, traffic density, and road characteristics -- all of which significantly affect accident probability. This results in routing recommendations that may be shortest but are not necessarily safest.
+
+\section{Proposed Solution}
+The proposed system:
+\begin{enumerate}
+  \item \textbf{Predicts} accident risk (0--1) for each road edge using a trained Gradient Boosting model
+  \item \textbf{Finds} the safest optimal route using a modified A* algorithm with a risk-aware cost function
+  \item \textbf{Decides} whether to PROCEED, REROUTE, or PROCEED WITH CAUTION using an intelligent goal-based agent
+  \item \textbf{Visualizes} results through a Streamlit web interface with color-coded route maps
+\end{enumerate}
+
+\section{Contributions}
+\begin{enumerate}
+  \item A hybrid ML+AI architecture integrating risk prediction directly into A* pathfinding
+  \item Comparative evaluation of four regression models on synthetic road data
+  \item Goal-based agent with session memory for adaptive rerouting
+  \item Streamlit Web UI for interactive, deployable demonstration
+\end{enumerate}
+
+%===========================================
+\chapter{Literature Review}
+%===========================================
+
+\section{A* Search Algorithm}
+Hart, Nilsson, and Raphael (1968) introduced the A* algorithm in their landmark paper ``A Formal Basis for the Heuristic Determination of Minimum Cost Paths'' published in IEEE Transactions on Systems Science and Cybernetics \cite{hart1968}. A* extends Dijkstra's algorithm by incorporating an admissible heuristic function $h(n)$ that estimates the remaining cost to the goal, enabling faster and more directed search. This work forms the algorithmic foundation of our pathfinding module.
+
+\section{Machine Learning for Accident Risk Prediction}
+Moosavi et al. (2019) developed a large-scale countrywide traffic accident dataset (US Accidents) containing 2.8 million accident records \cite{moosavi2019}. Their analysis demonstrated that ensemble machine learning methods significantly outperform traditional statistical models for accident severity prediction, motivating our use of Gradient Boosting in this project.
+
+\section{Gradient Boosting and Ensemble Methods}
+Chen and Guestrin (2016) proposed XGBoost, a scalable and high-performance Gradient Boosting framework \cite{chen2016}. Their work proved that sequential tree building with gradient descent optimization achieves superior accuracy on structured tabular data by capturing complex non-linear feature interactions -- a key requirement for modeling compound road risk factors.
+
+\section{Reinforcement Learning for Routing}
+Zhu et al. (2020) proposed a Reinforcement Learning based dynamic routing algorithm for intelligent transportation systems \cite{zhu2020}. While their approach is powerful, it requires extensive training time and real-time data feeds, making it impractical for lightweight deployments. This gap motivated the use of a simpler, explainable rule-based agent in our system.
+
+\section{Intelligent Agent Design}
+Russell and Norvig (2020) in \textit{Artificial Intelligence: A Modern Approach} (4th edition) defined the PEAS framework for intelligent agent design \cite{russell2020}. The goal-based agent architecture described in Chapter 2 was directly applied to design our traffic routing agent with memory.
+
+\section{Research Gap}
+Existing literature treats accident risk prediction and route optimization as separate problems. No lightweight, deployable system integrates ML-predicted continuous risk scores directly into A*'s cost function with an intelligent rerouting agent. This project fills that gap.
+
+%===========================================
+\chapter{System Architecture}
+%===========================================
+
+\section{Overview}
+The system follows a four-layer architecture where each layer feeds into the next:
+
+\begin{enumerate}
+  \item \textbf{Input Layer} -- User provides source, destination, and current environmental conditions
+  \item \textbf{ML Layer} -- Gradient Boosting model predicts accident risk (0--1) for each road edge
+  \item \textbf{Pathfinding Layer} -- A* algorithm finds the optimal safe path using risk-aware cost
+  \item \textbf{Agent Layer} -- Goal-based agent verifies safety and reroutes if necessary
+\end{enumerate}
+
+\section{City Road Graph}
+The city road network is modeled as a weighted undirected graph $G = (V, E)$ where:
+\begin{itemize}
+  \item $V$ = 15 nodes (labeled A through O) representing intersections
+  \item $E$ = 22 edges representing road segments with associated metadata
+\end{itemize}
+
+Each edge stores: distance (km), road\_type, speed\_limit, has\_signal, and num\_lanes.
+
+\section{Input Layer}
+User-provided inputs at runtime:
+\begin{itemize}
+  \item Source and destination nodes (A--O)
+  \item Hour of day (0--23)
+  \item Day of week (0=Monday, 6=Sunday)
+  \item Weather condition (clear, rain, fog)
+  \item Traffic density (0.1--1.0)
+\end{itemize}
+
+\section{ML Layer}
+The trained Gradient Boosting model receives 8 features per edge (5 edge attributes + 3 user conditions) and outputs a risk score $r(u,v) \in [0, 1]$. Categorical features (road\_type, weather) are label-encoded before prediction.
+
+\section{Pathfinding Layer}
+A* is executed with the risk-aware weight function. The Euclidean distance between node coordinates serves as the admissible heuristic.
+
+\section{Agent Layer}
+After A* returns a path, the agent:
+\begin{enumerate}
+  \item Scans every edge $(u,v)$ in the path
+  \item Identifies dangerous edges where $r(u,v) > 0.7$
+  \item If dangerous edges exist, removes them and re-runs A*
+  \item Records the final decision in \texttt{self.memory[]}
+\end{enumerate}
+
+\section{Web Interface}
+The Streamlit application (\texttt{app.py}) provides an interactive interface running at \texttt{http://localhost:8501} with sidebar inputs, live route map, edge risk scan table, path comparison, cost function display, and ML analysis graphs.
+
+%===========================================
+\chapter{Methodology}
+%===========================================
+
+\section{Dataset Generation}
+An 800-sample synthetic dataset was generated using domain-informed rules stored in \texttt{data/generate\_data.py} with \texttt{numpy.random.seed(42)} for full reproducibility.
+
+\begin{table}[h!]
+\centering
+\caption{Dataset Feature Descriptions}
+\begin{tabular}{llll}
+\toprule
+\textbf{Feature} & \textbf{Type} & \textbf{Values} & \textbf{Role} \\
+\midrule
+road\_type & Categorical & highway, main, residential, lane & Edge attribute \\
+hour\_of\_day & Integer & 0 -- 23 & Condition \\
+day\_of\_week & Integer & 0 (Mon) -- 6 (Sun) & Condition \\
+weather & Categorical & clear, rain, fog & Condition \\
+traffic\_density & Float & 0.1 -- 1.0 & Condition \\
+speed\_limit & Integer & 20, 30, 40, 60, 80 & Edge attribute \\
+has\_signal & Binary & 0 or 1 & Edge attribute \\
+num\_lanes & Integer & 1, 2, 4 & Edge attribute \\
+\textbf{accident\_risk} & \textbf{Float} & \textbf{0.0 -- 1.0} & \textbf{Target} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The target \texttt{accident\_risk} is computed from seven additive rules:
+\begin{itemize}
+  \item Speed limit contribution: $(speed\_limit / 80) \times 0.25$
+  \item Weather: clear=0.0, rain=+0.20, fog=+0.25
+  \item Night-time (22:00--05:00): +0.15
+  \item Traffic density: $density \times 0.15$
+  \item No traffic signal: +0.10
+  \item Highway type: +0.10
+  \item Compound interaction (rain $\cap$ highway $\cap$ night): +0.15
+\end{itemize}
+Gaussian noise ($\sigma = 0.04$) is added and values are clipped to $[0, 1]$.
+
+\section{Regression Model Training}
+Four models were trained on an 80/20 train-test split (640 training, 160 testing samples). Categorical features were encoded using \texttt{sklearn.preprocessing.LabelEncoder}.
+
+\begin{table}[h!]
+\centering
+\caption{Regression Model Performance Comparison}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Model} & \textbf{MSE} & \textbf{RMSE} & \textbf{$R^2$ Score} \\
+\midrule
+Linear Regression & 0.0136 & 0.1164 & 0.5508 \\
+Polynomial Regression (deg=2) & 0.0061 & 0.0784 & 0.7964 \\
+Random Forest (n=100) & 0.0046 & 0.0678 & 0.8478 \\
+\textbf{Gradient Boosting (n=100)} & \textbf{0.0025} & \textbf{0.0498} & \textbf{0.9177} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Gradient Boosting achieved the best performance -- a 66.5\% improvement over Linear Regression in $R^2$. The superior accuracy is attributed to sequential tree building which captures the compound rain+highway+night interaction that linear models cannot model.
+
+\section{Risk-Aware A* Cost Function}
+The standard A* edge weight (distance) is replaced by:
+\begin{equation}
+w(u,v) = \alpha \cdot d(u,v) + \beta \cdot (r(u,v) \times S)
+\end{equation}
+where:
+\begin{itemize}
+  \item $d(u,v)$ = geographic distance of edge in km
+  \item $r(u,v)$ = predicted accident risk $\in [0,1]$
+  \item $S = 10$ = scaling factor (normalizes risk to distance units)
+  \item $\alpha = 0.6$ = distance weight
+  \item $\beta = 0.4$ = safety weight
+\end{itemize}
+The Euclidean heuristic $h(n)$ remains admissible since road distance $\geq$ straight-line distance, preserving A* optimality.
+
+\section{Intelligent Agent Design}
+The Traffic Agent follows the PEAS framework:
+\begin{itemize}
+  \item \textbf{Performance Measure:} Reach destination with all edge risks below threshold $\tau = 0.7$
+  \item \textbf{Environment:} Weighted city road graph with ML-predicted risk scores
+  \item \textbf{Actuators:} Route selection, edge removal, rerouting
+  \item \textbf{Sensors:} Trained ML model, weather, time, and traffic conditions
+  \item \textbf{Memory:} \texttt{self.memory[]} stores all session routing decisions
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption=Agent Decision Algorithm]
+path = a_star(graph, source, destination, weight_fn)
+dangerous = [e for e in path_edges if risk(e) > 0.7]
+
+if len(dangerous) == 0:
+    decision = "PROCEED"
+else:
+    remove dangerous edges from graph
+    alt_path = a_star(graph, source, destination, weight_fn)
+    if alt_path exists:
+        decision = "REROUTE"
+        path = alt_path
+    else:
+        decision = "PROCEED_WITH_CAUTION"
+
+memory.append({source, destination, decision, conditions})
+\end{lstlisting}
+
+%===========================================
+\chapter{Results and Discussion}
+%===========================================
+
+\section{Model Selection}
+Gradient Boosting Regressor was automatically selected as the best model based on highest $R^2$ score (0.9177). The model is saved to \texttt{models/risk\_model.pkl} using Joblib for runtime loading without retraining.
+
+\section{Scenario Analysis}
+
+\begin{table}[h!]
+\centering
+\caption{Agent Decision Results Across Scenarios}
+\begin{tabular}{lllcc}
+\toprule
+\textbf{Scenario} & \textbf{Conditions} & \textbf{Route} & \textbf{Decision} & \textbf{Risky Edges} \\
+\midrule
+S1: Clear Morning & 10:00, Clear, 30\% & A $\to$ O & PROCEED & 0 \\
+S2: Rainy Night & 23:00, Rain, 70\% & A $\to$ O & PROCEED & 0 \\
+S3: Foggy Midnight & 01:00, Fog, 50\% & B $\to$ N & \textbf{REROUTE} & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Scenario 3 -- Detailed Analysis}
+The initial risk-aware path B$\to$E$\to$I$\to$J$\to$N included highway segment B$\to$E with predicted risk $r = 0.933$ -- significantly above threshold $\tau = 0.7$.
+
+The agent detected this dangerous segment, removed edge B$\to$E from the graph, and re-ran A*. An alternative path B$\to$D$\to$E$\to$I$\to$J$\to$N was found via residential roads. The path cost increased by only \textbf{3.1\%} (from 19.50 to 20.11) while completely eliminating the dangerous highway segment.
+
+\section{Web Interface Results}
+The Streamlit application successfully displays:
+\begin{itemize}
+  \item \textbf{Route Map:} Color-coded edges (Red: risk $>$ 0.7, Orange: 0.4--0.7, Green: $<$ 0.4)
+  \item \textbf{Edge Risk Scan:} Per-edge risk scores with DANGER flag
+  \item \textbf{Path Comparison:} Normal GPS route vs agent's chosen safe route
+  \item \textbf{ML Graphs:} Model comparison bar chart, risk distribution histogram, feature importance chart
+\end{itemize}
+
+\section{Feature Importance Analysis}
+Top features affecting accident risk (from Gradient Boosting feature importance):
+\begin{enumerate}
+  \item Speed limit -- highest impact
+  \item Weather condition
+  \item Traffic density
+  \item Hour of day
+  \item Road type
+\end{enumerate}
+
+%===========================================
+\chapter{Conclusion}
+%===========================================
+
+This project successfully developed a hybrid AI-ML system for accident-risk-aware traffic route planning. The key contributions are:
+
+\begin{enumerate}
+  \item \textbf{ML Model:} Gradient Boosting Regressor with $R^2 = 0.9177$ accurately predicts accident risk from 8 road and environmental features.
+  \item \textbf{Safe Routing:} Modified A* with parameterized cost function ($\alpha=0.6$, $\beta=0.4$) consistently routes away from high-risk edges.
+  \item \textbf{Intelligent Agent:} Goal-based agent with session memory correctly identifies dangerous routes and reroutes with minimal path cost increase (3.1\% in Scenario 3).
+  \item \textbf{Web UI:} Streamlit interface provides interactive, deployable demonstration suitable for real-world use.
+\end{enumerate}
+
+The project demonstrates that integrating machine learning risk prediction with classical AI pathfinding produces a system significantly safer than traditional distance-only routing.
+
+\section{Future Scope}
+\begin{itemize}
+  \item Replace synthetic data with Kaggle US Accidents dataset (2.8M real records)
+  \item Integrate OpenStreetMap via \texttt{osmnx} for real city graphs
+  \item Connect to live weather and traffic APIs for real-time risk updates
+  \item Apply Reinforcement Learning for adaptive threshold tuning
+  \item Deploy on Streamlit Cloud for public browser-based access
+\end{itemize}
+
+%===========================================
+% REFERENCES
+%===========================================
+
+\chapter*{References}
+\addcontentsline{toc}{chapter}{References}
+
+\begin{enumerate}
+\item World Health Organization, ``Global Status Report on Road Safety 2023,'' WHO Press, Geneva, 2023.
+\item P. E. Hart, N. J. Nilsson, and B. Raphael, ``A Formal Basis for the Heuristic Determination of Minimum Cost Paths,'' \textit{IEEE Transactions on Systems Science and Cybernetics}, vol. 4, no. 2, pp. 100--107, 1968.
+\item S. Moosavi, M. H. Samavatian, S. Parthasarathy, and R. Ramnath, ``A Countrywide Traffic Accident Dataset,'' \textit{arXiv preprint arXiv:1906.05409}, 2019.
+\item T. Chen and C. Guestrin, ``XGBoost: A Scalable Tree Boosting System,'' in \textit{Proc. 22nd ACM SIGKDD Conf.}, San Francisco, 2016, pp. 785--794.
+\item H. Zhu et al., ``A Reinforcement Learning-based Dynamic Routing Algorithm for Intelligent Transportation,'' in \textit{Proc. IEEE ITSC}, 2020, pp. 1--6.
+\item S. Russell and P. Norvig, \textit{Artificial Intelligence: A Modern Approach}, 4th ed. Hoboken, NJ: Pearson, 2020.
+\item F. Pedregosa et al., ``Scikit-learn: Machine Learning in Python,'' \textit{J. Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\end{enumerate}
+
+%===========================================
+% APPENDIX
+%===========================================
+
+\appendix
+
+\chapter{Cost Function Parameters}
+\begin{align}
+w(u,v) &= \alpha \cdot d(u,v) + \beta \cdot (r(u,v) \times S) \nonumber \\
+\alpha &= 0.6 \quad \text{(distance weight)} \nonumber \\
+\beta  &= 0.4 \quad \text{(safety weight)} \nonumber \\
+S      &= 10  \quad \text{(risk scaling factor)} \nonumber
+\end{align}
+
+\chapter{Project File Structure}
+\begin{lstlisting}
+paai_mini/
+|-- data/
+|   |-- generate_data.py    # Synthetic dataset generation
+|   |-- road_risk_data.csv  # 800 training samples
+|-- models/
+|   |-- risk_model.pkl      # Trained Gradient Boosting model
+|   |-- le_road.pkl         # Road type encoder
+|   |-- le_weather.pkl      # Weather encoder
+|-- src/
+|   |-- graph.py            # 15-node city graph
+|   |-- a_star.py           # A* pathfinding algorithm
+|   |-- model.py            # Train and compare 4 models
+|   |-- risk_routing.py     # ML model to A* bridge
+|   |-- agent.py            # Goal-based agent with memory
+|   |-- visualize.py        # Route map visualization
+|   |-- generate_graphs.py  # ML analysis graphs
+|-- app.py                  # Streamlit Web UI
+|-- main.py                 # CLI entry point
+|-- requirements.txt        # Python dependencies
+\end{lstlisting}
+
+\end{document}
