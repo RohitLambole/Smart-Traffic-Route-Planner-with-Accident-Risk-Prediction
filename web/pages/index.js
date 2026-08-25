@@ -20,6 +20,11 @@ export default function Home() {
   const [planning, setPlanning] = useState(false)
   const [result, setResult] = useState(null)
 
+  // build graph state
+  const [place, setPlace] = useState('Pune, India')
+  const [maxNodes, setMaxNodes] = useState(2000)
+  const [buildingGraph, setBuildingGraph] = useState(false)
+
   useEffect(() => {
     async function loadGraph(){
       setLoadingGraph(true)
@@ -60,6 +65,30 @@ export default function Home() {
     }finally{setPlanning(false)}
   }
 
+  async function handleBuildGraph(e){
+    e && e.preventDefault()
+    setBuildingGraph(true)
+    setError(null)
+    try{
+      const payload = { place: place || undefined, max_nodes: Number(maxNodes), network_type: 'drive' }
+      const res = await fetch(`${apiUrl}/graph/build`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      if(!res.ok){
+        const txt = await res.text()
+        throw new Error(`Graph build failed: ${res.status} ${txt}`)
+      }
+      const j = await res.json()
+      setGraph(j)
+      const nodes = Object.keys(j.nodes)
+      if(nodes.length>=2){
+        setSource(nodes[0])
+        setDest(nodes[nodes.length-1])
+      }
+      setResult(null)
+    }catch(e){
+      setError(e.message)
+    }finally{setBuildingGraph(false)}
+  }
+
   // helpers to draw SVG map
   function getBounds(nodes){
     const xs = Object.values(nodes).map(n=>n[0])
@@ -90,6 +119,17 @@ export default function Home() {
     <div className="page">
       <aside className="sidebar">
         <h1>Smart Traffic Route Planner</h1>
+
+        <div className="build">
+          <h3>Build / Load OSM Graph</h3>
+          <label>Place</label>
+          <input value={place} onChange={e=>setPlace(e.target.value)} />
+          <label>Max Nodes</label>
+          <input type="number" value={maxNodes} onChange={e=>setMaxNodes(e.target.value)} />
+          <button onClick={handleBuildGraph} disabled={buildingGraph}>{buildingGraph? 'Building...':'Build Graph for Place'}</button>
+          <p style={{fontSize:12,color:'#9aa'}}>Tip: use a city name (e.g., Pune, India) or small area to keep graph size reasonable.</p>
+        </div>
+
         <form onSubmit={handlePlan} className="form">
           <label>Source</label>
           <select value={source} onChange={e=>setSource(e.target.value)}>
@@ -195,7 +235,7 @@ export default function Home() {
 
                 {/* nodes */}
                 {Object.entries(graph.nodes).map(([k,pos])=>{
-                  const [x,y] = coordToSvg(pos[0], pos[1], getBounds(graph.nodes),900,700)
+                  const [x,y] = coordToSvg(pos[0],pos[1], getBounds(graph.nodes),900,700)
                   const isSource = result && result.path && result.path[0]===k
                   const isDest = result && result.path && result.path[result.path.length-1]===k
                   return (
@@ -226,6 +266,7 @@ export default function Home() {
         .map{background:#0f0f1a;padding:8px;border-radius:8px}
         pre{background:#111;color:#e0e0e0;padding:8px;border-radius:6px}
         .error{color:#f39c12}
+        .build{margin-bottom:12px;padding:8px;border:1px solid #223;border-radius:6px}
       `}</style>
     </div>
   )
