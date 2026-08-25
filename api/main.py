@@ -3,12 +3,15 @@ from pydantic import BaseModel
 from typing import List, Optional, Tuple, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 import sys, os
+import logging
 
 # Ensure we can import the project's src package
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from graph import city_graph, node_positions, get_edge_metadata
 from risk_routing import load_model, set_conditions, predict_edge_risk
 from agent import TrafficAgent
+
+logger = logging.getLogger(__name__)
 
 # --- Pydantic request model
 class RouteRequest(BaseModel):
@@ -38,7 +41,13 @@ MODEL = None
 @app.on_event("startup")
 def startup_event():
     global MODEL
-    MODEL = load_model()
+    try:
+        MODEL = load_model()
+        if not MODEL:
+            logger.warning("Model loader returned False or failed to load model files.")
+    except Exception:
+        logger.exception("Exception while loading model at startup. Continuing without model.")
+        MODEL = None
 
 
 @app.post("/route")
@@ -63,7 +72,11 @@ def route(req: RouteRequest):
     for u, neighbors in city_graph.items():
         for v, _ in neighbors:
             meta = get_edge_metadata(u, v)
-            r = predict_edge_risk(u, v, meta)
+            try:
+                r = predict_edge_risk(u, v, meta)
+            except Exception:
+                logger.exception(f"predict_edge_risk failed for edge {u}-{v}; using fallback 0.5")
+                r = 0.5
             edge_risks.append({
                 "edge": (u, v),
                 "risk": float(r),
@@ -82,3 +95,26 @@ def route(req: RouteRequest):
         "edge_risks": edge_risks,
     }
     return resp
+
+
+@app.get("/graph")
+def graph():
+    """Return node positions and edges with metadata for frontend mapping.
+
+    The response is a lightweight JSON serializable structure derived from src/graph.py.
+    """
+    edges = []
+    for u, neighbors in city_graph.items():
+        for v, dist in neighbors:
+            meta = get_edge_metadata(u, v)
+            edges.append({
+                "u": u,
+                "v": v,
+                "distance": float(dist),
+                "meta": meta,
+            })
+
+    return {
+        "nodes": {n: (float(x), float(y)) for n, (x, y) in node_positions.items()},
+        "edges": edges,
+    }
