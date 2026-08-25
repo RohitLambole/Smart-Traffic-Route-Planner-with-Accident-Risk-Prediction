@@ -7,13 +7,14 @@ import logging
 
 # Ensure we can import the project's src package
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-from graph import city_graph, node_positions, get_edge_metadata
+import graph
+from osm_graph import build_graph
 from risk_routing import load_model, set_conditions, predict_edge_risk
 from agent import TrafficAgent
 
 logger = logging.getLogger(__name__)
 
-# --- Pydantic request model
+# --- Pydantic request models
 class RouteRequest(BaseModel):
     source: str
     dest: str
@@ -22,6 +23,13 @@ class RouteRequest(BaseModel):
     weather: str  # "clear"|"rain"|"fog"
     traffic: float  # 0.1..1.0
     risk_threshold: float = 0.7
+
+class GraphBuildRequest(BaseModel):
+    place: Optional[str] = None
+    # bbox as [north, south, east, west]
+    bbox: Optional[List[float]] = None
+    network_type: Optional[str] = 'drive'
+    max_nodes: Optional[int] = 5000
 
 # --- FastAPI app
 app = FastAPI(title="Smart Traffic Route Planner API")
@@ -62,16 +70,16 @@ def route(req: RouteRequest):
     # set environment conditions (mutates module-level state in risk_routing)
     set_conditions(hour=req.hour, day=req.day, weather=req.weather, traffic=req.traffic)
 
-    agent = TrafficAgent(city_graph, node_positions, risk_threshold=req.risk_threshold)
+    agent = TrafficAgent(graph.city_graph, graph.node_positions, risk_threshold=req.risk_threshold)
     result = agent.plan_route(req.source, req.dest)
     if result is None:
         raise HTTPException(status_code=404, detail="No path found")
 
     # Build edge risk list for all graph edges (directed as present in city_graph)
     edge_risks = []
-    for u, neighbors in city_graph.items():
+    for u, neighbors in graph.city_graph.items():
         for v, _ in neighbors:
-            meta = get_edge_metadata(u, v)
+            meta = graph.get_edge_metadata(u, v)
             try:
                 r = predict_edge_risk(u, v, meta)
             except Exception:
@@ -98,15 +106,15 @@ def route(req: RouteRequest):
 
 
 @app.get("/graph")
-def graph():
+def graph_endpoint():
     """Return node positions and edges with metadata for frontend mapping.
 
     The response is a lightweight JSON serializable structure derived from src/graph.py.
     """
     edges = []
-    for u, neighbors in city_graph.items():
+    for u, neighbors in graph.city_graph.items():
         for v, dist in neighbors:
-            meta = get_edge_metadata(u, v)
+            meta = graph.get_edge_metadata(u, v)
             edges.append({
                 "u": u,
                 "v": v,
@@ -115,6 +123,53 @@ def graph():
             })
 
     return {
-        "nodes": {n: (float(x), float(y)) for n, (x, y) in node_positions.items()},
+        "nodes": {n: (float(x), float(y)) for n, (x, y) in graph.node_positions.items()},
         "edges": edges,
     }
+
+
+@app.post('/graph/build')
+def build_graph_endpoint(req: GraphBuildRequest):
+    """Build a constrained OSM graph on demand. Accepts either a place or a bbox.
+
+    bbox should be [north, south, east, west] (four floats). Returns the newly built graph.
+    """
+    if not req.place and not req.bbox:
+        raise HTTPException(status_code=400, detail='place or bbox is required')
+
+    try:
+        bbox_tuple = None
+        if req.bbox:
+            if len(req.bbox) != 4:
+                raise HTTPException(status_code=400, detail='bbox must be an array of 4 floats: [north,south,east,west]')
+            bbox_tuple = tuple(req.bbox)
+
+        new_city_graph, new_node_positions, new_edge_info = build_graph(
+            place=req.place,
+            bbox=bbox_tuple,
+            network_type=req.network_type or 'drive',
+            max_nodes=req.max_nodes or 5000
+        )
+
+        # update in-memory graph used by the app
+        graph.city_graph = new_city_graph
+        graph.node_positions = new_node_positions
+        graph.edge_info = new_edge_info
+
+        # return the graph in the same format as GET /graph
+        edges = []
+        for u, neighbors in graph.city_graph.items():
+            for v, dist in neighbors:
+                meta = graph.get_edge_metadata(u, v)
+                edges.append({"u": u, "v": v, "distance": float(dist), "meta": meta})
+
+        return {
+            "nodes": {n: (float(x), float(y)) for n, (x, y) in graph.node_positions.items()},
+            "edges": edges,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to build OSM graph on demand: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
