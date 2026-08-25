@@ -1,0 +1,32 @@
+# Ignore Python artifacts and Docker files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.env*
+.venv/
+
+# Ignore model artifacts (if large) and OS files
+models/
+*.pkl
+*.sqlite3
+*.db
+
+# Docker
+Dockerfile
+**/Dockerfile
+*.tar
+
+# Node
+web/node_modules/
+web/.next/
+web/.vercel/
+web/.env.local
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
