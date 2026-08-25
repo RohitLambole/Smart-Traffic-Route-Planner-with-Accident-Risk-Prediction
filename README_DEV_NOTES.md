@@ -1,5 +1,1 @@
-Updated the README with OSM deployment notes and instructions.
-
-Key changes:
-- The project now uses osmnx as the single graph source (default: Pune, India via OSM_PLACE env).
-- Added Dockerfile and DEPLOY_RENDER.md with Render deployment instructions.
+Update: add caching/persistence of built graphs to data/graphs; include instructions in README.
